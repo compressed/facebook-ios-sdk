@@ -100,7 +100,7 @@ static void *finishedContext = @"finishedContext";
 - (id)initWithAppId:(NSString *)appId
     urlSchemeSuffix:(NSString *)urlSchemeSuffix
         andDelegate:(id<FBSessionDelegate>)delegate {
-    
+
     self = [super init];
     if (self) {
         _requests = [[NSMutableSet alloc] init];
@@ -138,17 +138,17 @@ static void *finishedContext = @"finishedContext";
 - (void)invalidateSession {
     self.accessToken = nil;
     self.expirationDate = nil;
-    
+
     NSHTTPCookieStorage* cookies = [NSHTTPCookieStorage sharedHTTPCookieStorage];
     NSArray* facebookCookies = [cookies cookiesForURL:
                                 [NSURL URLWithString:@"http://login.facebook.com"]];
-    
+
     for (NSHTTPCookie* cookie in facebookCookies) {
         [cookies deleteCookie:cookie];
     }
-    
+
     // setting to nil also terminates any active request for whitelist
-    [_frictionlessRequestSettings updateRecipientCacheWithRecipients:nil]; 
+    [_frictionlessRequestSettings updateRecipientCacheWithRecipients:nil];
 }
 
 /**
@@ -168,16 +168,16 @@ static void *finishedContext = @"finishedContext";
                params:(NSMutableDictionary *)params
            httpMethod:(NSString *)httpMethod
              delegate:(id<FBRequestDelegate>)delegate {
-    
+
     [params setValue:@"json" forKey:@"format"];
     [params setValue:kSDK forKey:@"sdk"];
     [params setValue:kSDKVersion forKey:@"sdk_version"];
     if ([self isSessionValid]) {
         [params setValue:self.accessToken forKey:@"access_token"];
     }
-    
+
     [self extendAccessTokenIfNeeded];
-    
+
     FBRequest* _request = [FBRequest getRequestWithParams:params
                                                httpMethod:httpMethod
                                                  delegate:delegate
@@ -226,18 +226,19 @@ static void *finishedContext = @"finishedContext";
                                    @"touch", @"display",
                                    kSDK, @"sdk",
                                    nil];
-    
+    trySafariAuth = NO;
+
     NSString *loginDialogURL = [kDialogBaseURL stringByAppendingString:kLogin];
-    
+
     if (_permissions != nil) {
         NSString* scope = [_permissions componentsJoinedByString:@","];
         [params setValue:scope forKey:@"scope"];
     }
-    
+
     if (_urlSchemeSuffix) {
         [params setValue:_urlSchemeSuffix forKey:@"local_client_id"];
     }
-    
+
     // If the device is running a version of iOS that supports multitasking,
     // try to obtain the access token from the Facebook app installed
     // on the device.
@@ -257,16 +258,16 @@ static void *finishedContext = @"finishedContext";
             NSString *fbAppUrl = [FBRequest serializeURL:urlPrefix params:params];
             didOpenOtherApp = [[UIApplication sharedApplication] openURL:[NSURL URLWithString:fbAppUrl]];
         }
-        
+
         if (trySafariAuth && !didOpenOtherApp) {
             NSString *nextUrl = [self getOwnBaseUrl];
             [params setValue:nextUrl forKey:@"redirect_uri"];
-            
+
             NSString *fbAppUrl = [FBRequest serializeURL:loginDialogURL params:params];
             didOpenOtherApp = [[UIApplication sharedApplication] openURL:[NSURL URLWithString:fbAppUrl]];
         }
     }
-    
+
     // If single sign-on failed, open an inline login dialog. This will require the user to
     // enter his or her credentials.
     if (!didOpenOtherApp) {
@@ -330,7 +331,7 @@ static void *finishedContext = @"finishedContext";
  */
 - (void)authorize:(NSArray *)permissions {
     self.permissions = permissions;
-    
+
     [self authorizeWithFBAppAuth:YES safariAuth:YES];
 }
 
@@ -376,7 +377,7 @@ static void *finishedContext = @"finishedContext";
                                                    fromDate:_lastAccessTokenUpdate
                                                      toDate:[NSDate date]
                                                     options:0];
-        
+
         if (components.hour >= kTokenExtendThreshold) {
             return YES;
         }
@@ -406,9 +407,9 @@ static void *finishedContext = @"finishedContext";
     if (![[url absoluteString] hasPrefix:[self getOwnBaseUrl]]) {
         return NO;
     }
-    
+
     NSString *query = [url fragment];
-    
+
     // Version 3.2.3 of the Facebook app encodes the parameters in the query but
     // version 3.3 and above encode the parameters in the fragment. To support
     // both versions of the Facebook app, we try to parse the query if
@@ -416,39 +417,39 @@ static void *finishedContext = @"finishedContext";
     if (!query) {
         query = [url query];
     }
-    
+
     NSDictionary *params = [self parseURLParams:query];
     NSString *accessToken = [params objectForKey:@"access_token"];
-    
+
     // If the URL doesn't contain the access token, an error has occurred.
     if (!accessToken) {
         NSString *errorReason = [params objectForKey:@"error"];
-        
+
         // If the error response indicates that we should try again using Safari, open
         // the authorization dialog in Safari.
         if (errorReason && [errorReason isEqualToString:@"service_disabled_use_browser"]) {
             [self authorizeWithFBAppAuth:NO safariAuth:YES];
             return YES;
         }
-        
+
         // If the error response indicates that we should try the authorization flow
         // in an inline dialog, do that.
         if (errorReason && [errorReason isEqualToString:@"service_disabled"]) {
             [self authorizeWithFBAppAuth:NO safariAuth:NO];
             return YES;
         }
-        
+
         // The facebook app may return an error_code parameter in case it
         // encounters a UIWebViewDelegate error. This should not be treated
         // as a cancel.
         NSString *errorCode = [params objectForKey:@"error_code"];
-        
+
         BOOL userDidCancel =
         !errorCode && (!errorReason || [errorReason isEqualToString:@"access_denied"]);
         [self fbDialogNotLogin:userDidCancel];
         return YES;
     }
-    
+
     // We have an access token, so parse the expiration date.
     NSString *expTime = [params objectForKey:@"expires_in"];
     NSDate *expirationDate = [NSDate distantFuture];
@@ -458,7 +459,7 @@ static void *finishedContext = @"finishedContext";
             expirationDate = [NSDate dateWithTimeIntervalSinceNow:expVal];
         }
     }
-    
+
     [self fbDialogLogin:accessToken expirationDate:expirationDate];
     return YES;
 }
@@ -474,7 +475,7 @@ static void *finishedContext = @"finishedContext";
  */
 - (void)logout {
     [self invalidateSession];
-        
+
     if ([self.sessionDelegate respondsToSelector:@selector(fbDidLogout)]) {
         [self.sessionDelegate fbDidLogout];
     }
@@ -518,10 +519,10 @@ static void *finishedContext = @"finishedContext";
         NSLog(@"API Method must be specified");
         return nil;
     }
-    
+
     NSString * methodName = [params objectForKey:@"method"];
     [params removeObjectForKey:@"method"];
-    
+
     return [self requestWithMethodName:methodName
                              andParams:params
                          andHttpMethod:@"GET"
@@ -578,7 +579,7 @@ static void *finishedContext = @"finishedContext";
  */
 - (FBRequest*)requestWithGraphPath:(NSString *)graphPath
                        andDelegate:(id <FBRequestDelegate>)delegate {
-    
+
     return [self requestWithGraphPath:graphPath
                             andParams:[NSMutableDictionary dictionary]
                         andHttpMethod:@"GET"
@@ -610,7 +611,7 @@ static void *finishedContext = @"finishedContext";
 - (FBRequest*)requestWithGraphPath:(NSString *)graphPath
                          andParams:(NSMutableDictionary *)params
                        andDelegate:(id <FBRequestDelegate>)delegate {
-    
+
     return [self requestWithGraphPath:graphPath
                             andParams:params
                         andHttpMethod:@"GET"
@@ -650,7 +651,7 @@ static void *finishedContext = @"finishedContext";
                          andParams:(NSMutableDictionary *)params
                      andHttpMethod:(NSString *)httpMethod
                        andDelegate:(id <FBRequestDelegate>)delegate {
-    
+
     NSString * fullURL = [kGraphBaseURL stringByAppendingString:graphPath];
     return [self openUrl:fullURL
                   params:params
@@ -689,14 +690,14 @@ static void *finishedContext = @"finishedContext";
 - (void)dialog:(NSString *)action
      andParams:(NSMutableDictionary *)params
    andDelegate:(id <FBDialogDelegate>)delegate {
-    
+
     [_fbDialog release];
-    
+
     NSString *dialogURL = [kDialogBaseURL stringByAppendingString:action];
     [params setObject:@"touch" forKey:@"display"];
     [params setObject:kSDKVersion forKey:@"sdk"];
     [params setObject:kRedirectURL forKey:@"redirect_uri"];
-    
+
     if ([action isEqualToString:kLogin]) {
         [params setObject:@"user_agent" forKey:@"type"];
         _fbDialog = [[FBLoginDialog alloc] initWithURL:dialogURL loginParams:params delegate:self];
@@ -707,17 +708,17 @@ static void *finishedContext = @"finishedContext";
                       forKey:@"access_token"];
             [self extendAccessTokenIfNeeded];
         }
-        
+
         // by default we show dialogs, frictionless cases may have a hidden view
         BOOL invisible = NO;
-        
+
         // frictionless handling for application requests
-        if ([action isEqualToString:kApprequests]) {        
+        if ([action isEqualToString:kApprequests]) {
             // if frictionless requests are enabled
             if (self.isFrictionlessRequestsEnabled) {
                 //  1. show the "Don't show this again for these friends" checkbox
                 //  2. if the developer is sending a targeted request, then skip the loading screen
-                [params setValue:@"1" forKey:@"frictionless"];	
+                [params setValue:@"1" forKey:@"frictionless"];
                 //  3. request the frictionless recipient list encoded in the success url
                 [params setValue:@"1" forKey:@"get_frictionless_recipients"];
             }
@@ -731,18 +732,18 @@ static void *finishedContext = @"finishedContext";
                 if (![fbids isKindOfClass:[NSArray class]]) {
                     // otherwise seperate by commas (handles the singleton case too)
                     fbids = [fbid componentsSeparatedByString:@","];
-                }                
-                invisible = [self isFrictionlessEnabledForRecipients:fbids];             
+                }
+                invisible = [self isFrictionlessEnabledForRecipients:fbids];
             }
         }
-        
+
         _fbDialog = [[FBDialog alloc] initWithURL:dialogURL
                                            params:params
                                   isViewInvisible:invisible
-                             frictionlessSettings:_frictionlessRequestSettings 
+                             frictionlessSettings:_frictionlessRequestSettings
                                          delegate:delegate];
     }
-    
+
     [_fbDialog show];
 }
 
@@ -772,7 +773,7 @@ static void *finishedContext = @"finishedContext";
 - (BOOL)isSessionValid {
     return (self.accessToken != nil && self.expirationDate != nil
             && NSOrderedDescending == [self.expirationDate compare:[NSDate date]]);
-    
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +791,7 @@ static void *finishedContext = @"finishedContext";
     if ([self.sessionDelegate respondsToSelector:@selector(fbDidLogin)]) {
         [self.sessionDelegate fbDidLogin];
     }
-    
+
 }
 
 /**
@@ -815,13 +816,13 @@ static void *finishedContext = @"finishedContext";
     _requestExtendingAccessToken = nil;
     NSString* accessToken = [result objectForKey:@"access_token"];
     NSString* expTime = [result objectForKey:@"expires_at"];
-    
+
     if (accessToken == nil || expTime == nil) {
         return;
     }
-    
+
     self.accessToken = accessToken;
-    
+
     NSTimeInterval timeInterval = [expTime doubleValue];
     NSDate *expirationDate = [NSDate distantFuture];
     if (timeInterval != 0) {
@@ -830,7 +831,7 @@ static void *finishedContext = @"finishedContext";
     self.expirationDate = expirationDate;
     [_lastAccessTokenUpdate release];
     _lastAccessTokenUpdate = [[NSDate date] retain];
-    
+
     if ([self.sessionDelegate respondsToSelector:@selector(fbDidExtendToken:expiresAt:)]) {
         [self.sessionDelegate fbDidExtendToken:accessToken expiresAt:expirationDate];
     }
