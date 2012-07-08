@@ -13,7 +13,7 @@ sample/Hackbook/Hackbook.xcodeproj/xcuserdata*
 sample/Hackbook/Hackbook.xcodeproj/project.xcworkspace
 src/facebook-ios-sdk.xcodeproj/*.pbxuser
 src/facebook-ios-sdk.xcodeproj/*.mode*
-src/build/
+src/build*/
 build/
 lib/
 test/UnitTest/UnitTest.xcodeproj/*.pbxuser
